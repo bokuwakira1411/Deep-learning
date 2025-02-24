@@ -20,7 +20,7 @@ class MLP(torch.nn.Module):
         # set up layers n_hidden_nodes, layers, activation, keep_rate, drop, out
         self.hidden_layers = torch.nn.ModuleList()
         self.hidden_layer_drop = torch.nn.ModuleList()
-        self.hidden_layers.append(torch.nn.Linear(input_shape[1]*input_shape[2]*input_shape[3],n_hidden_nodes[0]))
+        self.hidden_layers.append(torch.nn.Linear(input_shape[0]*input_shape[1]*input_shape[2],n_hidden_nodes[0]))
         self.hidden_layer_drop.append(torch.nn.Dropout(drop_out))
         for i in range(1, n_hidden_layers):
             self.hidden_layers.append(torch.nn.Linear(n_hidden_nodes[i-1], n_hidden_nodes[i]))
@@ -86,7 +86,7 @@ def main():
                                            download=True, transform=transform)
     validation_loader = torch.utils.data.DataLoader(testset, batch_size=4,
                                                     shuffle=False, num_workers=0, pin_memory=False)
-    model = MLP([10000, 32, 32, 3],batch_size,50, [512, 256, 128], 3, 'relu', 0.3,0.001)
+    model = MLP([32, 32, 3],batch_size,50, [512, 256, 128], 3, 'relu', 0.3,0.001)
     for e in range(1, model.epoch+1):
         loss_function = torch.nn.CrossEntropyLoss()
         optimizer = torch.optim.SGD(model.parameters(), lr=model.learning_rate)
