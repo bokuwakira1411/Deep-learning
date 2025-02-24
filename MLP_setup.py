@@ -14,7 +14,7 @@ class MLP(torch.nn.Module):
         self.n_hidden_nodes = n_hidden_nodes
         self.activation = activation
         if learning_rate == 0:
-            learning_rate = 0.5
+            learning_rate = 0.005
         # set up layers n_hidden_nodes, layers, activation, keep_rate, drop, out
         self.hidden_layers = torch.nn.ModuleList()
         self.hidden_layer_drop = torch.nn.ModuleList()
@@ -38,22 +38,24 @@ class MLP(torch.nn.Module):
                 x = self.hidden_layer_drop[i](x)
         return torch.nn.functional.log_softmax(self.out(x))
 
-def train(epoch, model, train_loader,loss_function, optimizer, log_interval=100):
+def train(epoch, model, train_loader,loss_function, optimizer):
         model.train()
         correct = 0
+        total_loss = 0
+        num_batches = len(train_loader)
         for batch_idx, (data, target) in enumerate(train_loader):
             optimizer.zero_grad()
             output = model(data)
             pred = output.argmax(dim=1)
             correct += pred.eq(target).sum().item()
-            accuracy = 100. * correct / len(train_loader.dataset)
             loss = loss_function(output, target)
+            total_loss += loss.item()
             loss.backward()
             optimizer.step()
-            if batch_idx % log_interval == 0:
-                print('Train Epoch: {}\t[{}/{} ({:.0f}%)]\tLoss: {:.6f} Accuracy: {:.3f}%'.format(
-                    epoch, batch_idx * len(data), len(train_loader.dataset),
-                           100. * batch_idx / len(train_loader), loss.item(), accuracy))
+        accuracy = 100. * correct / len(train_loader.dataset)
+        average_loss = total_loss / num_batches
+        print('Train Epoch: {}\tLoss: {:.6f} Accuracy: {:.3f}%'.format(epoch, average_loss, accuracy))
+
 
 def validate(model, validation_loader):
         model.eval()
@@ -72,14 +74,14 @@ def main():
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     )
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=False, transform=transform)
+    trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=0,
                                                pin_memory=False)
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                           download=False, transform=transform)
+                                           download=True, transform=transform)
     validation_loader = torch.utils.data.DataLoader(testset, batch_size=4,
                                                     shuffle=False, num_workers=0, pin_memory=False)
-    model = MLP([10000, 32, 32, 3],batch_size,30, [64, 32], 2, 'sigmoid', 0.3,[.00001, 0.0001, 0.001, 0.01, 0.1])
+    model = MLP([10000, 32, 32, 3],batch_size,20, [64, 32, 16], 3, 'relu', 0.25,[.0005, 0.0005, 0.005, 0.05, 0.1])
     for e in range(1, model.epoch+1):
         loss_function = torch.nn.CrossEntropyLoss()
         optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
